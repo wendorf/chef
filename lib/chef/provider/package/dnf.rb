@@ -46,7 +46,7 @@ class Chef
             begin
               @real_name = {}
               package_name_array.map do |package_name|
-                provides = dnf("repoquery -q --whatprovides", package_name)
+                provides = dnf("repoquery -q --whatprovides --latest-limit 1", package_name)
                 version = nil
                 real_name = ""
                 provides.stdout.each_line do |line|
