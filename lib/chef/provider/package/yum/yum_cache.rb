@@ -65,6 +65,10 @@ class Chef
           # Cache management
           #
 
+          def yum_dump_path
+            ::File.join(::File.dirname(__FILE__), "yum-dump.py")
+          end
+
           def refresh
             case @next_refresh
             when :none
@@ -94,11 +98,10 @@ class Chef
             one_line = false
             error = nil
 
-            helper = ::File.join(::File.dirname(__FILE__), "yum-dump.py")
             status = nil
 
             begin
-              status = shell_out!("#{python_bin} #{helper}#{opts}", :timeout => Chef::Config[:yum_timeout])
+              status = shell_out!("#{python_bin} #{yum_dump_path}#{opts}", :timeout => Chef::Config[:yum_timeout])
               status.stdout.each_line do |line|
                 one_line = true
 
@@ -147,7 +150,7 @@ class Chef
 
               error = status.stderr
             rescue Mixlib::ShellOut::CommandTimeout => e
-              Chef::Log.error("#{helper} exceeded timeout #{Chef::Config[:yum_timeout]}")
+              Chef::Log.error("#{yum_dump_path} exceeded timeout #{Chef::Config[:yum_timeout]}")
               raise(e)
             end
 
