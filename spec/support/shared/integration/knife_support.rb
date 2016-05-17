@@ -49,7 +49,7 @@ module KnifeSupport
       stderr = StringIO.new
 
       stdin = if input
-                 StringIO.new(input)
+                StringIO.new(input)
               else
                 STDIN
               end
