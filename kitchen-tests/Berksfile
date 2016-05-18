@@ -1,6 +1,10 @@
 source "https://supermarket.getchef.com"
 
-cookbook "webapp", :path => "cookbooks/webapp"
-cookbook "base", :path => "cookbooks/base"
+cookbook "webapp", path: "cookbooks/webapp"
+cookbook "base", path: "cookbooks/base"
 
 cookbook "php", "~> 1.5.0"
+
+
+cookbook "resolver", github: "chef-cookbooks/resolver", branch: "lcg/docker"
+cookbook "chef-client", github: "chef-cookbooks/chef-client", branch: "lcg/which"
