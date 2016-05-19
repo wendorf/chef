@@ -43,63 +43,74 @@ class Chef
 
       class << self
 
-        def validate_exit_code(exit_code = nil)
-          exit_code = resolve_exit_code(exit_code)
-          return exit_code if valid?(exit_code)
-          default_exit_code
+        def normalize_exit_code(exit_code = nil)
+          if normalization_not_configured?
+            normalize_legacy_exit_code_with_warning(exit_code)
+          elsif normalization_disabled?
+            normalize_legacy_exit_code(exit_code)
+          else
+            normalize_exit_code_to_rfc(exit_code)
+          end
         end
 
-        def valid?(exit_code)
-          return false if exit_code.nil?
-          return true if skip_validation
-          return true if valid_exit_codes.include? exit_code
-
-          notify_on_deprecation(deprecation_warning)
-          allow_deprecated_exit_code
-        end
-
-        def allow_deprecated_exit_code
-          Chef::Config[:exit_status].nil? ||
-            Chef::Config[:exit_status] != :enabled
-        end
-
-        def skip_validation
-          Chef::Config[:exit_status] == :disabled
+        def enforce_rfc_062_exit_codes?
+          !normalization_disabled? && !normalization_not_configured?
         end
 
         def notify_reboot_exit_code_deprecation
-          return if skip_validation
+          return if normalization_disabled?
           notify_on_deprecation(reboot_deprecation_warning)
         end
 
         def notify_deprecated_exit_code
-          return if skip_validation
+          return if normalization_disabled?
           notify_on_deprecation(deprecation_warning)
         end
 
         private
 
-        def notify_on_deprecation(message)
-          begin
-            Chef.log_deprecation(message)
-          rescue Chef::Exceptions::DeprecatedFeatureError
-            # Have to rescue this, otherwise this unhandled error preempts
-            # the current exit code assignment.
+        def normalization_disabled?
+          Chef::Config[:exit_status] == :disabled
+        end
+
+        def normalization_not_configured?
+          Chef::Config[:exit_status].nil?
+        end
+
+        def normalize_legacy_exit_code_with_warning(exit_code)
+          normalized_exit_code = normalize_legacy_exit_code(exit_code)
+          unless valid_exit_codes.include? normalized_exit_code
+            notify_on_deprecation(deprecation_warning)
+          end
+          normalized_exit_code
+        end
+
+        def normalize_legacy_exit_code(exit_code)
+          case exit_code
+          when Fixnum
+            exit_code
+          when Exception
+            lookup_exit_code_by_exception(exit_code)
+          else
+            default_exit_code
           end
         end
 
-        def resolve_exit_code(exit_code)
-          return if exit_code.nil?
-          return exit_code if exit_code.is_a? Fixnum
-          resolve_exit_code_from_exception(exit_code)
+        def normalize_exit_code_to_rfc(exit_code)
+          normalized_exit_code = normalize_legacy_exit_code_with_warning(exit_code)
+          if valid_exit_codes.include? normalized_exit_code
+            normalized_exit_code
+          else
+            VALID_RFC_062_EXIT_CODES[:GENERIC_FAILURE]
+          end
         end
 
-        def resolve_exit_code_from_exception(exception)
+        def lookup_exit_code_by_exception(exception)
           if sigint_received?(exception)
             VALID_RFC_062_EXIT_CODES[:SIGINT_RECEIVED]
           elsif sigterm_received?(exception)
             VALID_RFC_062_EXIT_CODES[:SIGTERM_RECEIVED]
-          elsif allow_deprecated_exit_code
+          elsif normalization_disabled? || normalization_not_configured?
             if legacy_exit_code?(exception)
               # We have lots of "Chef::Application.fatal!('', 2)
               # This maintains that behavior at initial introduction
@@ -173,20 +184,17 @@ class Chef
           exception_array
         end
 
-        def deprecated_exit_codes(exit_code)
-          !valid_rfc?(exit_code) || deprecated_rfc?(exit_code)
-        end
-
-        def deprecated_rfc?(exit_code)
-          DEPRECATED_RFC_062_EXIT_CODES.values.include?(exit_code)
-        end
-
-        def valid_rfc?(exit_code)
-          valid_exit_codes.include?(exit_code)
-        end
-
         def valid_exit_codes
           VALID_RFC_062_EXIT_CODES.values
+        end
+
+        def notify_on_deprecation(message)
+          begin
+            Chef.log_deprecation(message)
+          rescue Chef::Exceptions::DeprecatedFeatureError
+            # Have to rescue this, otherwise this unhandled error preempts
+            # the current exit code assignment.
+          end
         end
 
         def deprecation_warning
@@ -204,8 +212,11 @@ class Chef
         end
 
         def default_exit_code
-          return DEPRECATED_RFC_062_EXIT_CODES[:DEPRECATED_FAILURE] if allow_deprecated_exit_code
-          VALID_RFC_062_EXIT_CODES[:GENERIC_FAILURE]
+          if normalization_disabled? || normalization_not_configured?
+            return DEPRECATED_RFC_062_EXIT_CODES[:DEPRECATED_FAILURE]
+          else
+            VALID_RFC_062_EXIT_CODES[:GENERIC_FAILURE]
+          end
         end
 
       end

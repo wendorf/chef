@@ -286,7 +286,7 @@ class Chef
           @chef_client.run
         rescue Exception => e
           Chef::Log.error(e.to_s)
-          exit Chef::Application.validate_exit_code(e)
+          exit Chef::Application.normalize_exit_code(e)
         else
           exit 0
         end
@@ -342,19 +342,19 @@ class Chef
         true
       end
 
-      def validate_exit_code(exit_code)
-        Chef::Application::ExitCode.validate_exit_code(exit_code)
+      def normalize_exit_code(exit_code)
+        Chef::Application::ExitCode.normalize_exit_code(exit_code)
       end
 
       # Log a fatal error message to both STDERR and the Logger, exit the application
       def fatal!(msg, err = nil)
         Chef::Log.fatal(msg)
-        Process.exit(validate_exit_code(err))
+        Process.exit(normalize_exit_code(err))
       end
 
       def exit!(msg, err = nil)
         Chef::Log.debug(msg)
-        Process.exit(validate_exit_code(err))
+        Process.exit(normalize_exit_code(err))
       end
     end
 

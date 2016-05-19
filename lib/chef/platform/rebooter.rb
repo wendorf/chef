@@ -49,7 +49,7 @@ class Chef
             raise Chef::Exceptions::RebootFailed.new(e.message)
           end
 
-          raise Chef::Exceptions::Reboot.new(msg) unless Chef::Application::ExitCode.allow_deprecated_exit_code
+          raise Chef::Exceptions::Reboot.new(msg) if Chef::Application::ExitCode.enforce_rfc_062_exit_codes?
           Chef::Application::ExitCode.notify_reboot_exit_code_deprecation
         end
 
