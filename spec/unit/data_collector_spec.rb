@@ -21,6 +21,136 @@
 require File.expand_path("../../spec_helper", __FILE__)
 require "chef/data_collector"
 
+describe Chef::DataCollector do
+  describe ".register_reporter?" do
+    context "when no data collector URL is configured" do
+      it "returns false" do
+        Chef::Config[:data_collector_server_url] = nil
+        expect(Chef::DataCollector.register_reporter?).to be_falsey
+      end
+    end
+
+    context "when a data collector URL is configured" do
+      before do
+        Chef::Config[:data_collector_server_url] = "http://data_collector"
+      end
+
+      context "when operating in why_run mode" do
+        it "returns false" do
+          Chef::Config[:why_run] = true
+          expect(Chef::DataCollector.register_reporter?).to be_falsey
+        end
+      end
+
+      context "when not operating in why_run mode" do
+        before do
+          Chef::Config[:why_run] = false
+        end
+
+        context "when report is enabled for current mode" do
+          it "returns true" do
+            allow(Chef::DataCollector).to receive(:reporter_enabled_for_current_mode?).and_return(true)
+            expect(Chef::DataCollector.register_reporter?).to be_truthy
+          end
+        end
+
+        context "when report is disabled for current mode" do
+          it "returns false" do
+            allow(Chef::DataCollector).to receive(:reporter_enabled_for_current_mode?).and_return(false)
+            expect(Chef::DataCollector.register_reporter?).to be_falsey
+          end
+        end
+      end
+    end
+  end
+
+  describe ".reporter_enabled_for_current_mode?" do
+    context "when running in solo mode" do
+      before do
+        Chef::Config[:solo] = true
+        Chef::Config[:local_mode] = false
+      end
+
+      context "when data_collector_mode is :solo" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :solo
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+
+      context "when data_collector_mode is :client" do
+        it "returns false" do
+          Chef::Config[:data_collector_mode] = :client
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(false)
+        end
+      end
+
+      context "when data_collector_mode is :both" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :both
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+    end
+
+    context "when running in local mode" do
+      before do
+        Chef::Config[:solo] = false
+        Chef::Config[:local_mode] = true
+      end
+
+      context "when data_collector_mode is :solo" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :solo
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+
+      context "when data_collector_mode is :client" do
+        it "returns false" do
+          Chef::Config[:data_collector_mode] = :client
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(false)
+        end
+      end
+
+      context "when data_collector_mode is :both" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :both
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+    end
+
+    context "when running in client mode" do
+      before do
+        Chef::Config[:solo] = false
+        Chef::Config[:local_mode] = false
+      end
+
+      context "when data_collector_mode is :solo" do
+        it "returns false" do
+          Chef::Config[:data_collector_mode] = :solo
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(false)
+        end
+      end
+
+      context "when data_collector_mode is :client" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :client
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+
+      context "when data_collector_mode is :both" do
+        it "returns true" do
+          Chef::Config[:data_collector_mode] = :both
+          expect(Chef::DataCollector.reporter_enabled_for_current_mode?).to eq(true)
+        end
+      end
+    end
+  end
+end
+
 describe Chef::DataCollector::Reporter do
   let(:reporter) { described_class.new }
 
