@@ -30,6 +30,7 @@ env:
 
 matrix:
   include:
+  - rvm: 2.0
   - rvm: 2.1
     sudo: true
     script: sudo -E $(which bundle) exec rake spec;
